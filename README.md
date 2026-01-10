@@ -2,6 +2,8 @@
 
 批量验证 Sora 账号手机号的 Web 服务。
 
+
+
 ## 目录结构
 
 ```
@@ -48,7 +50,25 @@ docker run -d -p 8899:8899 -v ./data:/app/data sora-bind
 - 自动移除已满手机号
 - 数据持久化（SQLite）
 
+## 推荐渠道
+
+### 号卡 API
+
+| 平台 | 地址 |
+|------|------|
+| CC 接码 | https://api.cc/ |
+| US API | https://usapi6.com/ |
+
+### 代理服务
+
+| 平台 | 地址 |
+|------|------|
+| Webshare | https://www.webshare.io/ |
+
+### 账号RT
+## 在群里问一下就知道了
 ## 注意事项
 
 - `data/` 目录包含数据库，已在 `.gitignore` 中忽略
 - 生产环境请修改默认管理员密码
+
