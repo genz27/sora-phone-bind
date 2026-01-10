@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+data/
+build/
+dist/
+.git/
+.gitignore
+*.spec

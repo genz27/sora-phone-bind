@@ -1,0 +1,1090 @@
+﻿<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sora 管理后台</title>
+  <style>
+    :root {
+      --bg: #050505;
+      --panel: #0c0c0c;
+      --panel-2: #101010;
+      --line: #1e1e1e;
+      --text: #f3f3f3;
+      --muted: #8a8a8a;
+      --accent: #35b8ff;
+      --accent-2: #7cff6b;
+      --danger: #ff5c5c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Space Grotesk", "Noto Sans", sans-serif;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(800px 300px at 85% 0%, rgba(53, 184, 255, 0.08), transparent 60%),
+        radial-gradient(700px 400px at 10% 10%, rgba(124, 255, 107, 0.08), transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .shell {
+      position: relative;
+      z-index: 1;
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 28px 20px 60px;
+    }
+    body:not(.authed) .shell { display: none; }
+    body.authed .auth-mask { display: none; }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    header h1 { margin: 0; font-size: 22px; }
+    header p { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
+    .controls { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn {
+      border: 1px solid var(--line);
+      background: #0e0e0e;
+      color: var(--text);
+      padding: 9px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .btn.primary { background: var(--accent); color: #06131e; border-color: transparent; font-weight: 600; }
+    .btn.danger { background: rgba(255,92,92,0.12); color: var(--danger); border-color: rgba(255,92,92,0.5); }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      margin-bottom: 18px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+    .stat {
+      background: #0b0b0b;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .stat .label { color: var(--muted); font-size: 11px; }
+    .stat .value { font-size: 18px; font-weight: 600; margin-top: 6px; }
+    label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+    input[type="text"], input[type="number"], textarea, select {
+      width: 100%;
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 12px;
+      outline: none;
+    }
+    textarea { min-height: 110px; resize: vertical; font-family: "JetBrains Mono", monospace; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      padding: 8px 6px;
+      border-bottom: 1px solid #1a1a1a;
+      text-align: left;
+    }
+    th { color: var(--muted); font-weight: 500; }
+    .row-actions { display: flex; gap: 6px; }
+    .badge { padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); font-size: 11px; }
+    .badge.on { color: var(--accent-2); border-color: rgba(124,255,107,0.5); }
+    .badge.off { color: var(--danger); border-color: rgba(255,92,92,0.5); }
+    .list {
+      max-height: 260px;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      background: #0a0a0a;
+      font-size: 12px;
+    }
+    .list div { padding: 4px 0; border-bottom: 1px solid #151515; }
+    .list div:last-child { border-bottom: none; }
+    .notice {
+      margin-top: 10px;
+      color: var(--accent-2);
+      font-size: 12px;
+    }
+    .cell-wrap {
+      white-space: normal;
+      word-break: break-all;
+    }
+    .auth-mask {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      padding: 20px;
+    }
+    .auth-panel {
+      width: min(360px, 100%);
+    }
+    .auth-panel h2 { margin: 0 0 8px; font-size: 18px; }
+    .auth-error { color: var(--danger); font-size: 12px; margin-top: 8px; }
+    .pagination {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .pagination input[type="number"] { width: 80px; }
+    .page-info { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>Sora 管理后台</h1>
+        <p>卡密管理 · 后台配置 · 任务监控</p>
+      </div>
+      <div class="controls">
+        <button class="btn" id="pauseBtn">暂停</button>
+        <button class="btn" id="resumeBtn">恢复</button>
+        <button class="btn danger" id="stopBtn">停止</button>
+      </div>
+    </header>
+
+    <section class="panel">
+      <div class="grid" id="overview"></div>
+    </section>
+
+    <section class="panel">
+      <div class="grid">
+        <div>
+          <label>生成数量</label>
+          <input type="number" id="newCardBatch" min="1" value="1">
+        </div>
+        <div>
+          <label>每张可用次数</label>
+          <input type="number" id="newCardCount" min="1" value="10">
+        </div>
+        <div>
+          <label>自定义卡密（可空）</label>
+          <input type="text" id="newCardCode" placeholder="留空自动生成">
+        </div>
+        <div>
+          <label>备注</label>
+          <input type="text" id="newCardNote" placeholder="可选">
+        </div>
+        <div style="display:flex; align-items:end; gap:10px;">
+          <button class="btn primary" id="createCardBtn">生成卡密</button>
+          <button class="btn" id="randCardBtn">随机卡密</button>
+        </div>
+      </div>
+      <div class="notice" id="cardCreateNotice"></div>
+    </section>
+
+    <section class="panel">
+      <div class="grid">
+        <div>
+          <label>卡密调整</label>
+          <input type="text" id="adjustCode" placeholder="输入卡密">
+        </div>
+        <div>
+          <label>增减次数（可负数）</label>
+          <input type="number" id="adjustDelta" value="1">
+        </div>
+        <div style="display:flex; align-items:end;">
+          <button class="btn" id="adjustBtn">应用</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>卡密列表</h3>
+      <div class="grid">
+        <div>
+          <label>关键词</label>
+          <input type="text" id="cardKeyword" placeholder="卡密或备注">
+        </div>
+        <div>
+          <label>状态</label>
+          <select id="cardStatusFilter">
+            <option value="">全部</option>
+            <option value="active">启用</option>
+            <option value="inactive">禁用</option>
+          </select>
+        </div>
+        <div>
+          <label>次数筛选</label>
+          <select id="cardRemainingFilter">
+            <option value="">全部</option>
+            <option value="nonzero">有次数</option>
+            <option value="zero">无次数</option>
+          </select>
+        </div>
+        <div>
+          <label>每页</label>
+          <input type="number" id="cardPageSize" min="5" max="200" value="20">
+        </div>
+        <div>
+          <label>导出类型</label>
+          <select id="cardExportMode">
+            <option value="codes">卡密列表</option>
+            <option value="full">明细 CSV</option>
+          </select>
+        </div>
+        <div style="display:flex; align-items:end; gap:10px;">
+          <button class="btn" id="refreshCardsBtn">刷新</button>
+          <button class="btn" id="exportCardsBtn">导出筛选</button>
+          <button class="btn danger" id="clearZeroCardsBtn">一键清除无次数</button>
+        </div>
+      </div>
+      <div class="pagination">
+        <button class="btn" id="cardPrevPage">上一页</button>
+        <button class="btn" id="cardNextPage">下一页</button>
+        <span class="page-info" id="cardPageInfo">第 1/1 页 · 共 0 条</span>
+        <input type="number" id="cardPageInput" min="1" value="1">
+        <span class="page-info">页</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>卡密</th>
+              <th>剩余/总数</th>
+              <th>状态</th>
+              <th>备注</th>
+              <th>创建时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="cardTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>后台配置</h3>
+      <div class="grid">
+        <div>
+          <label>手机号 API（手机号----API地址）</label>
+          <textarea id="phonesCfg"></textarea>
+        </div>
+        <div>
+          <label>代理池（每行一个）</label>
+          <textarea id="proxiesCfg"></textarea>
+        </div>
+      </div>
+      <div class="grid" style="margin-top:12px;">
+        <div>
+          <label>并发数</label>
+          <input type="number" id="concurrencyCfg" min="1" value="3">
+        </div>
+        <div>
+          <label>轮询间隔（秒）</label>
+          <input type="number" id="intervalCfg" min="1" value="5">
+        </div>
+        <div>
+          <label>最大重试</label>
+          <input type="number" id="retriesCfg" min="1" value="30">
+        </div>
+        <div style="display:flex; align-items:end;">
+          <button class="btn primary" id="saveCfgBtn">保存配置</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>手机号列表</h3>
+      <div class="grid">
+        <div>
+          <label>关键词</label>
+          <input type="text" id="phoneKeyword" placeholder="手机号或 API">
+        </div>
+        <div>
+          <label>状态</label>
+          <select id="phoneStatusFilter">
+            <option value="">全部</option>
+            <option value="active">有效</option>
+            <option value="inactive">停用</option>
+            <option value="invalid">失效</option>
+          </select>
+        </div>
+        <div>
+          <label>每页</label>
+          <input type="number" id="phonePageSize" min="5" max="200" value="20">
+        </div>
+        <div style="display:flex; align-items:end; gap:10px;">
+          <button class="btn" id="refreshPhonesBtn">刷新</button>
+          <button class="btn danger" id="clearFullPhonesBtn">一键清空已满手机号</button>
+        </div>
+      </div>
+      <div class="pagination">
+        <button class="btn" id="phonePrevPage">上一页</button>
+        <button class="btn" id="phoneNextPage">下一页</button>
+        <span class="page-info" id="phonePageInfo">第 1/1 页 · 共 0 条</span>
+        <input type="number" id="phonePageInput" min="1" value="1">
+        <span class="page-info">页</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>手机号</th>
+              <th>API 地址</th>
+              <th>已绑定</th>
+              <th>剩余可用</th>
+              <th>状态</th>
+              <th>更新时间</th>
+            </tr>
+          </thead>
+          <tbody id="phoneUsageTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>管理员密码</h3>
+      <div class="grid">
+        <div>
+          <label>原密码</label>
+          <input type="password" id="oldPassword" placeholder="输入原密码">
+        </div>
+        <div>
+          <label>新密码</label>
+          <input type="password" id="newPassword" placeholder="至少6位">
+        </div>
+        <div style="display:flex; align-items:end;">
+          <button class="btn primary" id="changePasswordBtn">修改密码</button>
+        </div>
+      </div>
+      <div class="notice" id="passwordNotice"></div>
+    </section>
+
+
+    <section class="panel">
+      <h3>任务列表</h3>
+      <div class="grid">
+        <div>
+          <label>状态筛选</label>
+          <select id="jobFilter">
+            <option value="">全部</option>
+            <option value="pending">pending</option>
+            <option value="running">running</option>
+            <option value="success">success</option>
+            <option value="failed">failed</option>
+          </select>
+        </div>
+        <div>
+          <label>关键词</label>
+          <input type="text" id="jobKeyword" placeholder="卡密/手机号/消息">
+        </div>
+        <div>
+          <label>每页</label>
+          <input type="number" id="jobPageSize" min="5" max="500" value="20">
+        </div>
+        <div style="display:flex; align-items:end; gap:10px;">
+          <button class="btn" id="refreshJobsBtn">刷新</button>
+          <button class="btn danger" id="clearJobsBtn">清空任务</button>
+        </div>
+      </div>
+      <div class="pagination">
+        <button class="btn" id="jobPrevPage">上一页</button>
+        <button class="btn" id="jobNextPage">下一页</button>
+        <span class="page-info" id="jobPageInfo">第 1/1 页 · 共 0 条</span>
+        <input type="number" id="jobPageInput" min="1" value="1">
+        <span class="page-info">页</span>
+      </div>
+      <div style="overflow-x:auto; margin-top:12px;">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>卡密</th>
+              <th>类型</th>
+              <th>状态</th>
+              <th>手机号</th>
+              <th>消息</th>
+              <th>更新时间</th>
+            </tr>
+          </thead>
+          <tbody id="jobTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>运行日志</h3>
+      <div class="list" id="logList"></div>
+    </section>
+  </main>
+
+  <div class="auth-mask" id="authGate">
+    <div class="panel auth-panel">
+      <h2>管理员登录</h2>
+      <label>密码</label>
+      <input type="password" id="adminPassword" placeholder="输入管理员密码">
+      <div class="controls" style="margin-top:12px;">
+        <button class="btn primary" id="loginBtn">登录</button>
+      </div>
+      <div class="auth-error" id="authError"></div>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      token: localStorage.getItem("sora_admin_token") || "",
+      cards: { page: 1, pageSize: 20, total: 0 },
+      phones: { page: 1, pageSize: 20, total: 0 },
+      jobs: { page: 1, pageSize: 20, total: 0 },
+    };
+    const authGate = document.getElementById("authGate");
+    const authError = document.getElementById("authError");
+    const passwordInput = document.getElementById("adminPassword");
+
+    function showAuth(message) {
+      document.body.classList.remove("authed");
+      authGate.style.display = "flex";
+      authError.textContent = message || "";
+    }
+
+    function hideAuth() {
+      document.body.classList.add("authed");
+      authGate.style.display = "none";
+      authError.textContent = "";
+      passwordInput.value = "";
+    }
+
+    async function api(url, options = {}, withAuth = true) {
+      const headers = { "Content-Type": "application/json" };
+      if (withAuth && state.token) {
+        headers.Authorization = `Bearer ${state.token}`;
+      }
+      const res = await fetch(url, { ...options, headers });
+      if (res.status === 401) {
+        state.token = "";
+        localStorage.removeItem("sora_admin_token");
+        showAuth("请先登录");
+        throw new Error("未登录");
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || "请求失败");
+      }
+      return res.json();
+    }
+
+    function buildQuery(params) {
+      const search = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === "") {
+          return;
+        }
+        search.set(key, value);
+      });
+      return search.toString();
+    }
+
+    function getTotalPages(total, pageSize) {
+      return Math.max(1, Math.ceil((total || 0) / (pageSize || 1)));
+    }
+
+    function updatePager(prefix, listState) {
+      const totalPages = getTotalPages(listState.total, listState.pageSize);
+      if (listState.page > totalPages) {
+        listState.page = totalPages;
+      }
+      const infoEl = document.getElementById(`${prefix}PageInfo`);
+      if (infoEl) {
+        infoEl.textContent = `第 ${listState.page}/${totalPages} 页 · 共 ${listState.total} 条`;
+      }
+      const inputEl = document.getElementById(`${prefix}PageInput`);
+      if (inputEl) {
+        inputEl.value = listState.page;
+        inputEl.max = totalPages;
+      }
+    }
+
+    async function downloadWithAuth(url, fallbackName) {
+      const headers = {};
+      if (state.token) {
+        headers.Authorization = `Bearer ${state.token}`;
+      }
+      const res = await fetch(url, { headers });
+      if (res.status === 401) {
+        state.token = "";
+        localStorage.removeItem("sora_admin_token");
+        showAuth("请先登录");
+        throw new Error("未登录");
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || "导出失败");
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") || "";
+      const match = disposition.match(/filename=([^;]+)/i);
+      const filename = (match ? match[1] : fallbackName || "export.txt").replace(/["']/g, "");
+      const link = document.createElement("a");
+      const objectUrl = URL.createObjectURL(blob);
+      link.href = objectUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    }
+
+    async function loadOverview() {
+      if (!state.token) {
+        return;
+      }
+      const data = await api("/api/admin/overview");
+      const overviewEl = document.getElementById("overview");
+      const items = [
+        { label: "卡密总数", value: data.cards },
+        { label: "启用卡密", value: data.active_cards },
+        { label: "任务总数", value: data.jobs },
+        { label: "成功", value: data.success },
+        { label: "失败", value: data.failed },
+        { label: "待处理", value: data.pending },
+        { label: "运行中", value: data.running },
+        { label: "并发数", value: data.concurrency },
+      ];
+      overviewEl.innerHTML = items.map((item) => `
+        <div class="stat">
+          <div class="label">${item.label}</div>
+          <div class="value">${item.value}</div>
+        </div>
+      `).join("");
+    }
+
+    async function loadCards(resetPage = false) {
+      if (!state.token) {
+        return;
+      }
+      if (resetPage) {
+        state.cards.page = 1;
+      }
+      const pageSize = parseInt(document.getElementById("cardPageSize").value, 10) || 20;
+      state.cards.pageSize = pageSize;
+      const keyword = document.getElementById("cardKeyword").value.trim();
+      const status = document.getElementById("cardStatusFilter").value;
+      const remaining = document.getElementById("cardRemainingFilter").value;
+      const query = buildQuery({
+        page: state.cards.page,
+        page_size: state.cards.pageSize,
+        keyword,
+        status,
+        remaining,
+      });
+      const data = await api(`/api/admin/cards?${query}`);
+      state.cards.total = data.total || 0;
+      const totalPages = getTotalPages(state.cards.total, state.cards.pageSize);
+      if (state.cards.page > totalPages && state.cards.total > 0) {
+        state.cards.page = totalPages;
+        return loadCards();
+      }
+      updatePager("card", state.cards);
+      const tbody = document.getElementById("cardTable");
+      tbody.innerHTML = data.items.map((card) => {
+        const statusBadge = card.active ? "on" : "off";
+        return `
+          <tr>
+            <td>${card.code}</td>
+            <td>${card.remaining} / ${card.total}</td>
+            <td><span class="badge ${statusBadge}">${card.active ? "启用" : "禁用"}</span></td>
+            <td>${card.note || ""}</td>
+            <td>${card.created_at}</td>
+            <td class="row-actions">
+              <button class="btn" data-copy="${card.code}">复制</button>
+              <button class="btn" data-toggle="${card.code}" data-active="${card.active ? 1 : 0}">${card.active ? "禁用" : "启用"}</button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function getCardFilters() {
+      return {
+        keyword: document.getElementById("cardKeyword").value.trim(),
+        status: document.getElementById("cardStatusFilter").value,
+        remaining: document.getElementById("cardRemainingFilter").value,
+      };
+    }
+
+    async function exportCards() {
+      if (!state.token) {
+        showAuth("请先登录");
+        return;
+      }
+      const filters = getCardFilters();
+      const mode = document.getElementById("cardExportMode").value;
+      const query = buildQuery({ ...filters, mode });
+      await downloadWithAuth(`/api/admin/cards/export?${query}`, mode === "full" ? "cards_full.csv" : "cards.txt");
+    }
+
+    async function clearZeroCards() {
+      if (!state.token) {
+        showAuth("请先登录");
+        return;
+      }
+      if (!confirm("确认清除剩余次数为 0 的卡密？")) {
+        return;
+      }
+      const data = await api("/api/admin/cards/clear_zero", { method: "POST" });
+      await loadCards();
+      await loadOverview();
+      alert(`已清除 ${data.deleted || 0} 个无次数卡密`);
+    }
+
+    async function loadConfig() {
+      if (!state.token) {
+        return;
+      }
+      const data = await api("/api/admin/config");
+      document.getElementById("phonesCfg").value = data.phones || "";
+      document.getElementById("proxiesCfg").value = data.proxies || "";
+      document.getElementById("concurrencyCfg").value = data.concurrency;
+      document.getElementById("intervalCfg").value = data.code_poll_interval;
+      document.getElementById("retriesCfg").value = data.code_max_retries;
+    }
+
+    async function loadJobs(resetPage = false) {
+      if (!state.token) {
+        return;
+      }
+      if (resetPage) {
+        state.jobs.page = 1;
+      }
+      const status = document.getElementById("jobFilter").value;
+      const keyword = document.getElementById("jobKeyword").value.trim();
+      const pageSize = parseInt(document.getElementById("jobPageSize").value, 10) || 20;
+      state.jobs.pageSize = pageSize;
+      const query = buildQuery({
+        status,
+        keyword,
+        page: state.jobs.page,
+        page_size: state.jobs.pageSize,
+      });
+      const data = await api(`/api/admin/jobs?${query}`);
+      state.jobs.total = data.total || 0;
+      const totalPages = getTotalPages(state.jobs.total, state.jobs.pageSize);
+      if (state.jobs.page > totalPages && state.jobs.total > 0) {
+        state.jobs.page = totalPages;
+        return loadJobs();
+      }
+      updatePager("job", state.jobs);
+      const tbody = document.getElementById("jobTable");
+      tbody.innerHTML = data.items.map((job) => `
+        <tr>
+          <td>${job.id}</td>
+          <td>${job.card_code}</td>
+          <td>${job.token_type}</td>
+          <td>${job.status}</td>
+          <td>${job.phone || ""}</td>
+          <td>${job.message || ""}</td>
+          <td>${job.updated_at}</td>
+        </tr>
+      `).join("");
+    }
+
+    async function loadLogs() {
+      if (!state.token) {
+        return;
+      }
+      const data = await api("/api/admin/logs");
+      const list = document.getElementById("logList");
+      list.innerHTML = data.items.map((line) => `<div>${line}</div>`).join("");
+    }
+
+    async function loadPhoneUsage(resetPage = false) {
+      if (!state.token) {
+        return;
+      }
+      if (resetPage) {
+        state.phones.page = 1;
+      }
+      const keyword = document.getElementById("phoneKeyword").value.trim();
+      const status = document.getElementById("phoneStatusFilter").value;
+      const pageSize = parseInt(document.getElementById("phonePageSize").value, 10) || 20;
+      state.phones.pageSize = pageSize;
+      const query = buildQuery({
+        keyword,
+        status,
+        page: state.phones.page,
+        page_size: state.phones.pageSize,
+      });
+      const data = await api(`/api/admin/phones?${query}`);
+      state.phones.total = data.total || 0;
+      const totalPages = getTotalPages(state.phones.total, state.phones.pageSize);
+      if (state.phones.page > totalPages && state.phones.total > 0) {
+        state.phones.page = totalPages;
+        return loadPhoneUsage();
+      }
+      updatePager("phone", state.phones);
+      const statusLabel = {
+        active: "有效",
+        inactive: "停用",
+        invalid: "失效",
+      };
+      const tbody = document.getElementById("phoneUsageTable");
+      tbody.innerHTML = data.items.map((row) => `
+        <tr>
+          <td class="cell-wrap">${row.phone}</td>
+          <td class="cell-wrap">${row.api_url || ""}</td>
+          <td>${row.bound_count}</td>
+          <td>${row.remaining}</td>
+          <td>${statusLabel[row.status] || "失效"}</td>
+          <td>${row.updated_at}</td>
+        </tr>
+      `).join("");
+    }
+
+    async function clearFullPhones() {
+      if (!state.token) {
+        showAuth("请先登录");
+        return;
+      }
+      try {
+        const data = await api("/api/admin/phones/clear_full", { method: "POST" });
+        await loadPhoneUsage();
+        await loadOverview();
+        alert(`已清空 ${data.cleared || 0} 个已满手机号`);
+      } catch (err) {
+        alert(err.message || "清空失败");
+      }
+    }
+
+    async function createCard() {
+      if (!state.token) {
+        showAuth("请先登录");
+        return;
+      }
+      const noticeEl = document.getElementById("cardCreateNotice");
+      const count = parseInt(document.getElementById("newCardCount").value, 10) || 0;
+      const batch = parseInt(document.getElementById("newCardBatch").value, 10) || 0;
+      const code = document.getElementById("newCardCode").value.trim();
+      const note = document.getElementById("newCardNote").value.trim();
+      if (count <= 0) {
+        noticeEl.textContent = "可用次数必须大于 0";
+        noticeEl.style.color = "var(--danger)";
+        return;
+      }
+      if (batch <= 0) {
+        noticeEl.textContent = "生成数量必须大于 0";
+        noticeEl.style.color = "var(--danger)";
+        return;
+      }
+      if (batch > 1 && code) {
+        noticeEl.textContent = "批量生成时请留空自定义卡密";
+        noticeEl.style.color = "var(--danger)";
+        return;
+      }
+      noticeEl.textContent = "生成中...";
+      noticeEl.style.color = "var(--accent-2)";
+      const codes = [];
+      for (let i = 0; i < batch; i += 1) {
+        const data = await api("/api/admin/cards", {
+          method: "POST",
+          body: JSON.stringify({ count, code: code || "", note }),
+        });
+        codes.push(data.code);
+      }
+      document.getElementById("newCardCode").value = codes[codes.length - 1] || "";
+      noticeEl.textContent = `已生成 ${codes.length} 个卡密`;
+      noticeEl.style.color = "var(--accent-2)";
+      await loadCards(true);
+      await loadOverview();
+    }
+
+    async function adjustCard() {
+      if (!state.token) {
+        showAuth("请先登录");
+        return;
+      }
+      const code = document.getElementById("adjustCode").value.trim();
+      const delta = parseInt(document.getElementById("adjustDelta").value, 10) || 0;
+      if (!code || !delta) {
+        return;
+      }
+      await api(`/api/admin/cards/${code}/adjust`, {
+        method: "POST",
+        body: JSON.stringify({ delta }),
+      });
+      await loadCards();
+      await loadOverview();
+    }
+
+    async function toggleCard(code, active) {
+      if (!state.token) {
+        showAuth("请先登录");
+        return;
+      }
+      await api(`/api/admin/cards/${code}/toggle`, {
+        method: "POST",
+        body: JSON.stringify({ active }),
+      });
+      await loadCards();
+      await loadOverview();
+    }
+
+    async function saveConfig() {
+      if (!state.token) {
+        showAuth("请先登录");
+        return;
+      }
+      const payload = {
+        phones: document.getElementById("phonesCfg").value,
+        proxies: document.getElementById("proxiesCfg").value,
+        concurrency: parseInt(document.getElementById("concurrencyCfg").value, 10) || 1,
+        code_poll_interval: parseInt(document.getElementById("intervalCfg").value, 10) || 5,
+        code_max_retries: parseInt(document.getElementById("retriesCfg").value, 10) || 30,
+      };
+      await api("/api/admin/config", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      await loadOverview();
+    }
+
+    async function changePassword() {
+      if (!state.token) {
+        showAuth("请先登录");
+        return;
+      }
+      const oldPassword = document.getElementById("oldPassword").value.trim();
+      const newPassword = document.getElementById("newPassword").value.trim();
+      const noticeEl = document.getElementById("passwordNotice");
+      if (!oldPassword || !newPassword) {
+        noticeEl.textContent = "请填写原密码和新密码";
+        noticeEl.style.color = "var(--danger)";
+        return;
+      }
+      try {
+        await api("/api/admin/password", {
+          method: "POST",
+          body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
+        });
+        noticeEl.textContent = "密码已修改，请重新登录";
+        noticeEl.style.color = "var(--accent-2)";
+        state.token = "";
+        localStorage.removeItem("sora_admin_token");
+        showAuth("请重新登录");
+      } catch (err) {
+        noticeEl.textContent = err.message || "修改失败";
+        noticeEl.style.color = "var(--danger)";
+      }
+    }
+
+    async function clearJobs() {
+      if (!state.token) {
+        showAuth("请先登录");
+        return;
+      }
+      await api("/api/admin/clear_jobs", { method: "POST" });
+      state.jobs.page = 1;
+      await loadJobs();
+      await loadOverview();
+    }
+
+    async function login() {
+      const password = passwordInput.value.trim();
+      if (!password) {
+        showAuth("请输入密码");
+        return;
+      }
+      try {
+        const data = await api("/api/admin/login", {
+          method: "POST",
+          body: JSON.stringify({ password }),
+        }, false);
+        state.token = data.token;
+        localStorage.setItem("sora_admin_token", data.token);
+        hideAuth();
+        await refreshAll();
+      } catch (err) {
+        showAuth(err.message || "登录失败");
+      }
+    }
+
+    async function refreshAll() {
+      await loadOverview();
+      await loadCards();
+      await loadConfig();
+      await loadJobs();
+      await loadLogs();
+      await loadPhoneUsage();
+    }
+
+    function generateRandomCardCode(length = 16) {
+      const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+      if (window.crypto && window.crypto.getRandomValues) {
+        const bytes = new Uint8Array(length);
+        window.crypto.getRandomValues(bytes);
+        return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
+      }
+      let code = "";
+      for (let i = 0; i < length; i += 1) {
+        code += alphabet[Math.floor(Math.random() * alphabet.length)];
+      }
+      return code;
+    }
+
+    function applyPageInput(listKey, inputId, loadFn) {
+      const value = parseInt(document.getElementById(inputId).value, 10);
+      if (!value || value < 1) {
+        return;
+      }
+      state[listKey].page = value;
+      loadFn();
+    }
+
+    document.getElementById("createCardBtn").addEventListener("click", createCard);
+    document.getElementById("randCardBtn").addEventListener("click", () => {
+      const noticeEl = document.getElementById("cardCreateNotice");
+      const batch = parseInt(document.getElementById("newCardBatch").value, 10) || 1;
+      if (batch > 1) {
+        noticeEl.textContent = "批量生成时无需随机卡密";
+        noticeEl.style.color = "var(--danger)";
+        return;
+      }
+      document.getElementById("newCardCode").value = generateRandomCardCode();
+      noticeEl.textContent = "";
+    });
+    document.getElementById("refreshCardsBtn").addEventListener("click", () => loadCards());
+    document.getElementById("exportCardsBtn").addEventListener("click", exportCards);
+    document.getElementById("clearZeroCardsBtn").addEventListener("click", clearZeroCards);
+    document.getElementById("cardStatusFilter").addEventListener("change", () => loadCards(true));
+    document.getElementById("cardRemainingFilter").addEventListener("change", () => loadCards(true));
+    document.getElementById("cardPageSize").addEventListener("change", () => loadCards(true));
+    document.getElementById("cardKeyword").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        loadCards(true);
+      }
+    });
+    document.getElementById("cardPrevPage").addEventListener("click", () => {
+      state.cards.page = Math.max(1, state.cards.page - 1);
+      loadCards();
+    });
+    document.getElementById("cardNextPage").addEventListener("click", () => {
+      const totalPages = getTotalPages(state.cards.total, state.cards.pageSize);
+      state.cards.page = Math.min(totalPages, state.cards.page + 1);
+      loadCards();
+    });
+    document.getElementById("cardPageInput").addEventListener("change", () => {
+      applyPageInput("cards", "cardPageInput", loadCards);
+    });
+    document.getElementById("adjustBtn").addEventListener("click", adjustCard);
+    document.getElementById("saveCfgBtn").addEventListener("click", saveConfig);
+    document.getElementById("refreshJobsBtn").addEventListener("click", () => loadJobs());
+    document.getElementById("clearJobsBtn").addEventListener("click", clearJobs);
+    document.getElementById("jobFilter").addEventListener("change", () => loadJobs(true));
+    document.getElementById("jobPageSize").addEventListener("change", () => loadJobs(true));
+    document.getElementById("jobKeyword").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        loadJobs(true);
+      }
+    });
+    document.getElementById("jobPrevPage").addEventListener("click", () => {
+      state.jobs.page = Math.max(1, state.jobs.page - 1);
+      loadJobs();
+    });
+    document.getElementById("jobNextPage").addEventListener("click", () => {
+      const totalPages = getTotalPages(state.jobs.total, state.jobs.pageSize);
+      state.jobs.page = Math.min(totalPages, state.jobs.page + 1);
+      loadJobs();
+    });
+    document.getElementById("jobPageInput").addEventListener("change", () => {
+      applyPageInput("jobs", "jobPageInput", loadJobs);
+    });
+    document.getElementById("changePasswordBtn").addEventListener("click", changePassword);
+    document.getElementById("clearFullPhonesBtn").addEventListener("click", clearFullPhones);
+    document.getElementById("refreshPhonesBtn").addEventListener("click", () => loadPhoneUsage());
+    document.getElementById("phoneStatusFilter").addEventListener("change", () => loadPhoneUsage(true));
+    document.getElementById("phonePageSize").addEventListener("change", () => loadPhoneUsage(true));
+    document.getElementById("phoneKeyword").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        loadPhoneUsage(true);
+      }
+    });
+    document.getElementById("phonePrevPage").addEventListener("click", () => {
+      state.phones.page = Math.max(1, state.phones.page - 1);
+      loadPhoneUsage();
+    });
+    document.getElementById("phoneNextPage").addEventListener("click", () => {
+      const totalPages = getTotalPages(state.phones.total, state.phones.pageSize);
+      state.phones.page = Math.min(totalPages, state.phones.page + 1);
+      loadPhoneUsage();
+    });
+    document.getElementById("phonePageInput").addEventListener("change", () => {
+      applyPageInput("phones", "phonePageInput", loadPhoneUsage);
+    });
+
+    document.getElementById("pauseBtn").addEventListener("click", () => api("/api/admin/pause", { method: "POST" }));
+    document.getElementById("resumeBtn").addEventListener("click", () => api("/api/admin/resume", { method: "POST" }));
+    document.getElementById("stopBtn").addEventListener("click", () => api("/api/admin/stop", { method: "POST" }));
+    document.getElementById("loginBtn").addEventListener("click", login);
+    passwordInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        login();
+      }
+    });
+
+    document.getElementById("cardTable").addEventListener("click", async (event) => {
+      const copy = event.target.getAttribute("data-copy");
+      if (copy) {
+        await navigator.clipboard.writeText(copy).catch(() => {});
+        return;
+      }
+      const toggle = event.target.getAttribute("data-toggle");
+      if (toggle) {
+        const active = event.target.getAttribute("data-active") !== "1";
+        await toggleCard(toggle, active);
+      }
+    });
+
+    if (!state.token) {
+      showAuth("请先登录");
+    } else {
+      hideAuth();
+      refreshAll();
+    }
+
+    setInterval(() => {
+      if (state.token) {
+        loadOverview();
+      }
+    }, 3000);
+    setInterval(() => {
+      if (state.token) {
+        loadJobs();
+        loadLogs();
+        loadPhoneUsage();
+      }
+    }, 4000);
+  </script>
+</body>
+</html>

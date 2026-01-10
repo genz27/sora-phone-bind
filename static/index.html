@@ -1,0 +1,939 @@
+﻿<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sora 绑定平台</title>
+  <style>
+    :root {
+      --bg: #050505;
+      --panel: #0c0c0c;
+      --panel-2: #101010;
+      --line: #1e1e1e;
+      --text: #f3f3f3;
+      --muted: #8a8a8a;
+      --accent: #7cff6b;
+      --accent-2: #35b8ff;
+      --danger: #ff5c5c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Space Grotesk", "Noto Sans", sans-serif;
+      letter-spacing: 0.2px;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(800px 300px at 10% 0%, rgba(124, 255, 107, 0.08), transparent 60%),
+        radial-gradient(700px 400px at 90% 10%, rgba(53, 184, 255, 0.08), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,0.02), transparent 40%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .shell {
+      position: relative;
+      z-index: 1;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 600;
+    }
+    .brand p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .tabs {
+      display: inline-flex;
+      gap: 8px;
+      background: #0a0a0a;
+      padding: 6px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      margin-bottom: 18px;
+    }
+    .tab {
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      padding: 8px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 12px;
+      letter-spacing: 0.6px;
+    }
+    .tab.active {
+      border-color: rgba(124, 255, 107, 0.6);
+      color: var(--text);
+      background: rgba(124, 255, 107, 0.12);
+    }
+    .inline-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #0a0a0a;
+      margin-bottom: 14px;
+    }
+    .inline-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 120px;
+    }
+    .inline-label {
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    input[type="text"], textarea {
+      width: 100%;
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 13px;
+      outline: none;
+    }
+    input[type="text"]:focus, textarea:focus {
+      border-color: rgba(124, 255, 107, 0.6);
+      box-shadow: 0 0 0 2px rgba(124, 255, 107, 0.1);
+    }
+    textarea {
+      min-height: 160px;
+      resize: vertical;
+      font-family: "JetBrains Mono", "Fira Code", monospace;
+    }
+    .segmented {
+      display: flex;
+      gap: 6px;
+      background: #0a0a0a;
+      padding: 6px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+    }
+    .segmented button {
+      flex: 1;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--muted);
+      padding: 8px 0;
+      border-radius: 9px;
+      cursor: pointer;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .segmented button.active {
+      border-color: rgba(124, 255, 107, 0.6);
+      color: var(--text);
+      background: rgba(124, 255, 107, 0.12);
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .btn {
+      border: 1px solid var(--line);
+      background: #0e0e0e;
+      color: var(--text);
+      padding: 10px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s ease;
+    }
+    .btn.primary {
+      background: var(--accent);
+      color: #061a08;
+      border-color: transparent;
+      font-weight: 600;
+    }
+    .btn.danger {
+      background: rgba(255, 92, 92, 0.12);
+      border-color: rgba(255, 92, 92, 0.5);
+      color: var(--danger);
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+    }
+    .stat {
+      background: #0b0b0b;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .stat .label {
+      color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 6px;
+    }
+    .stat .value {
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .notice {
+      margin-top: 12px;
+      color: var(--accent-2);
+      font-size: 12px;
+    }
+    .divider {
+      height: 1px;
+      background: var(--line);
+      margin: 16px 0;
+    }
+    .single-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .list {
+      max-height: 360px;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 8px;
+      background: #0a0a0a;
+    }
+    .item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-bottom: 1px solid #151515;
+      font-size: 12px;
+    }
+    .item:last-child { border-bottom: none; }
+    .meta {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .tag {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .status {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+    }
+    .status.pending { border-color: #3a3a3a; color: var(--muted); }
+    .status.running { border-color: rgba(53,184,255,0.6); color: var(--accent-2); }
+    .status.success { border-color: rgba(124,255,107,0.6); color: var(--accent); }
+    .status.failed { border-color: rgba(255,92,92,0.6); color: var(--danger); }
+    .status.canceled { border-color: rgba(255,92,92,0.6); color: var(--danger); }
+    .table-wrap {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: auto;
+      background: #0a0a0a;
+      max-height: 360px;
+    }
+    .result-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      table-layout: fixed;
+      min-width: 1200px;
+    }
+    .result-table th,
+    .result-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #151515;
+      text-align: left;
+      white-space: nowrap;
+    }
+    .result-table th {
+      color: var(--muted);
+      font-weight: 500;
+      position: sticky;
+      top: 0;
+      background: #0a0a0a;
+      z-index: 1;
+    }
+    .result-table tr:last-child td { border-bottom: none; }
+    .result-table .col-token,
+    .result-table .col-progress,
+    .result-table .col-phone,
+    .result-table .col-code,
+    .result-table .col-newrt {
+      white-space: normal;
+      word-break: break-all;
+    }
+    .result-table .col-token { width: 260px; }
+    .result-table .col-progress { width: 220px; }
+    .result-table .col-phone { width: 200px; }
+    .result-table .col-code { width: 140px; }
+    .result-table .col-newrt { width: 220px; }
+    .result-table .col-status { width: 90px; }
+    .result-table .col-queue { width: 90px; }
+    .result-table .col-flag { width: 80px; }
+    .result-flag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      font-size: 12px;
+    }
+    .result-flag.success { border-color: rgba(124,255,107,0.6); color: var(--accent); }
+    .result-flag.failed { border-color: rgba(255,92,92,0.6); color: var(--danger); }
+    .result-flag.pending { border-color: #3a3a3a; color: var(--muted); }
+    @media (max-width: 720px) {
+      header { flex-direction: column; align-items: flex-start; gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div class="brand">
+        <h1>Sora 绑定平台</h1>
+        <p>输入卡密与 Token，后台自动绑定并返回状态</p>
+      </div>
+    </header>
+
+    <div class="tabs">
+      <button class="tab" id="tabToken">Token 绑定</button>
+      <button class="tab active" id="tabPhone">手机号绑定</button>
+    </div>
+
+    <div id="tokenPage" style="display:none;">
+      <div class="grid">
+        <section class="panel">
+        <label>卡密</label>
+        <input id="cardCode" type="text" placeholder="输入卡密">
+
+        <label style="margin-top:14px;">Token 类型</label>
+        <div class="segmented" id="tokenType">
+          <button data-type="rt">RT</button>
+          <button data-type="st">ST</button>
+        </div>
+
+        <label style="margin-top:14px;">Token 列表（每行一个）</label>
+        <textarea id="tokenInput" placeholder="一行一个 token"></textarea>
+
+        <div class="actions">
+          <button class="btn primary" id="submitBtn">提交绑定</button>
+          <button class="btn" id="clearBtn">清空当前批次</button>
+          <button class="btn danger" id="cancelBatch">终止绑定</button>
+          <button class="btn" id="exportNewRt">导出新 RT</button>
+          <button class="btn" id="exportSuccess">导出成功 Token</button>
+          <button class="btn" id="exportUnbound">导出未绑定 Token</button>
+          <button class="btn danger" id="exportFailed">导出失败 Token</button>
+          <button class="btn" id="exportAll">导出全部 Token</button>
+        </div>
+        <div class="notice" id="notice"></div>
+        </section>
+
+        <section class="panel">
+        <div class="stats">
+          <div class="stat">
+            <div class="label">卡密余额</div>
+            <div class="value" id="cardRemain">-</div>
+          </div>
+          <div class="stat">
+            <div class="label">成功</div>
+            <div class="value" id="countSuccess">0</div>
+          </div>
+          <div class="stat">
+            <div class="label">失败</div>
+            <div class="value" id="countFailed">0</div>
+          </div>
+          <div class="stat">
+            <div class="label">处理中</div>
+            <div class="value" id="countRunning">0</div>
+          </div>
+          <div class="stat">
+            <div class="label">待处理</div>
+            <div class="value" id="countPending">0</div>
+          </div>
+          <div class="stat">
+            <div class="label">全局排队</div>
+            <div class="value" id="queueTotal">0</div>
+          </div>
+          <div class="stat">
+            <div class="label">并发</div>
+            <div class="value" id="concurrencyValue">-</div>
+          </div>
+        </div>
+        </section>
+      </div>
+
+      <section class="panel">
+        <label>任务列表</label>
+        <div class="table-wrap">
+          <table class="result-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th class="col-token">Token</th>
+                <th class="col-status">状态</th>
+                <th class="col-queue">队列</th>
+                <th class="col-flag">结果</th>
+                <th class="col-progress">进度</th>
+                <th class="col-phone">手机号</th>
+                <th class="col-code">验证码</th>
+                <th class="col-newrt">新RT</th>
+              </tr>
+            </thead>
+            <tbody id="resultList"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div class="grid" id="phonePage" style="display:none;">
+      <section class="panel">
+        <div class="inline-stats">
+          <div class="inline-item">
+            <span class="inline-label">手机号</span>
+            <span id="phoneValue">-</span>
+          </div>
+          <div class="inline-item">
+            <span class="inline-label">验证码</span>
+            <span id="phoneCode">-</span>
+          </div>
+          <div class="inline-item">
+            <span class="inline-label">状态</span>
+            <span id="phoneStatus">-</span>
+          </div>
+          <div class="inline-item">
+            <span class="inline-label">剩余轮询</span>
+            <span id="phonePoll">-</span>
+          </div>
+          <div class="inline-item">
+            <span class="inline-label">卡密余额</span>
+            <span id="phoneRemain">-</span>
+          </div>
+        </div>
+
+        <label>卡密</label>
+        <input id="phoneCardCode" type="text" placeholder="输入卡密">
+
+        <div class="single-actions">
+          <button class="btn primary" id="requestPhone">提取手机号</button>
+          <button class="btn" id="clearPhone">清空</button>
+          <button class="btn danger" id="cancelPhone">终止获取</button>
+        </div>
+        <div class="notice" id="phoneNotice"></div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const state = {
+      batchId: localStorage.getItem("sora_batch_id") || "",
+      tokenType: localStorage.getItem("sora_token_type") || "rt",
+      cardCode: localStorage.getItem("sora_card_code") || "",
+      phoneRequestId: localStorage.getItem("sora_phone_request") || "",
+      polling: null,
+    };
+    const allowedTypes = ["rt", "st"];
+
+    const noticeEl = document.getElementById("notice");
+    const tokenTypeEl = document.getElementById("tokenType");
+    const cardCodeEl = document.getElementById("cardCode");
+    const tokenInputEl = document.getElementById("tokenInput");
+    const tokenPageEl = document.getElementById("tokenPage");
+    const phonePageEl = document.getElementById("phonePage");
+    const tabTokenEl = document.getElementById("tabToken");
+    const tabPhoneEl = document.getElementById("tabPhone");
+    const phoneCardCodeEl = document.getElementById("phoneCardCode");
+    const phoneNoticeEl = document.getElementById("phoneNotice");
+    const phoneValueEl = document.getElementById("phoneValue");
+    const phoneCodeEl = document.getElementById("phoneCode");
+    const phoneStatusEl = document.getElementById("phoneStatus");
+    const phoneRemainEl = document.getElementById("phoneRemain");
+    const cardRemainEl = document.getElementById("cardRemain");
+    const phonePollEl = document.getElementById("phonePoll");
+
+    cardCodeEl.value = state.cardCode;
+    phoneCardCodeEl.value = state.cardCode;
+
+    function setNotice(msg, isError = false) {
+      noticeEl.textContent = msg || "";
+      noticeEl.style.color = isError ? "var(--danger)" : "var(--accent-2)";
+    }
+
+    function setPhoneNotice(msg, isError = false) {
+      phoneNoticeEl.textContent = msg || "";
+      phoneNoticeEl.style.color = isError ? "var(--danger)" : "var(--accent-2)";
+    }
+
+    function getCardCodeValue() {
+      return (cardCodeEl.value || phoneCardCodeEl.value || state.cardCode || "").trim();
+    }
+
+    function setPage(page) {
+      const isToken = page === "token";
+      tokenPageEl.style.display = isToken ? "block" : "none";
+      phonePageEl.style.display = isToken ? "none" : "grid";
+      tabTokenEl.classList.toggle("active", isToken);
+      tabPhoneEl.classList.toggle("active", !isToken);
+      if (!isToken) {
+        phoneCardCodeEl.value = phoneCardCodeEl.value || cardCodeEl.value;
+      } else {
+        cardCodeEl.value = cardCodeEl.value || phoneCardCodeEl.value;
+      }
+    }
+
+    tabTokenEl.addEventListener("click", () => setPage("token"));
+    tabPhoneEl.addEventListener("click", () => setPage("phone"));
+
+    function setTokenType(type) {
+      if (!allowedTypes.includes(type)) {
+        type = "rt";
+      }
+      state.tokenType = type;
+      localStorage.setItem("sora_token_type", type);
+      [...tokenTypeEl.querySelectorAll("button")].forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.type === type);
+      });
+      updateExportLabels();
+    }
+
+    tokenTypeEl.addEventListener("click", (event) => {
+      const btn = event.target.closest("button");
+      if (btn) {
+        setTokenType(btn.dataset.type);
+      }
+    });
+
+    setTokenType(state.tokenType);
+    setPage("phone");
+
+    function updateExportLabels() {
+      const label = state.tokenType.toUpperCase();
+      document.getElementById("exportSuccess").textContent = `导出成功 ${label}`;
+      document.getElementById("exportUnbound").textContent = `导出未绑定 ${label}`;
+      document.getElementById("exportFailed").textContent = `导出失败 ${label}`;
+      document.getElementById("exportAll").textContent = `导出全部 ${label}`;
+    }
+
+    async function api(url, options) {
+      const res = await fetch(url, {
+        ...options,
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || "请求失败");
+      }
+      return res.json();
+    }
+
+    let cardBalanceTimer = null;
+    async function refreshCardBalance(code) {
+      if (!code) {
+        cardRemainEl.textContent = "-";
+        phoneRemainEl.textContent = "-";
+        return;
+      }
+      try {
+        const data = await api(`/api/user/card/${code}`);
+        const value = `${data.remaining} / ${data.total}`;
+        cardRemainEl.textContent = value;
+        phoneRemainEl.textContent = value;
+      } catch (err) {
+        cardRemainEl.textContent = "无效";
+        phoneRemainEl.textContent = "无效";
+      }
+    }
+
+    function scheduleCardBalance(code) {
+      if (cardBalanceTimer) {
+        clearTimeout(cardBalanceTimer);
+      }
+      cardBalanceTimer = setTimeout(() => refreshCardBalance(code), 500);
+    }
+
+    cardCodeEl.addEventListener("input", () => {
+      const code = cardCodeEl.value.trim();
+      state.cardCode = code;
+      localStorage.setItem("sora_card_code", code);
+      if (!phoneCardCodeEl.value) {
+        phoneCardCodeEl.value = code;
+      }
+      scheduleCardBalance(code);
+    });
+
+    phoneCardCodeEl.addEventListener("input", () => {
+      const code = phoneCardCodeEl.value.trim();
+      state.cardCode = code;
+      localStorage.setItem("sora_card_code", code);
+      if (!cardCodeEl.value) {
+        cardCodeEl.value = code;
+      }
+      scheduleCardBalance(code);
+    });
+
+
+    async function submitTokens() {
+      const cardCode = cardCodeEl.value.trim();
+      const tokens = tokenInputEl.value.trim();
+      if (!cardCode || !tokens) {
+        setNotice("请填写卡密和 token 列表", true);
+        return;
+      }
+      setNotice("提交中...");
+      try {
+        const data = await api("/api/user/submit", {
+          method: "POST",
+          body: JSON.stringify({
+            card_code: cardCode,
+            token_type: state.tokenType,
+            tokens,
+          }),
+        });
+        state.batchId = data.batch_id;
+        localStorage.setItem("sora_batch_id", state.batchId);
+        localStorage.setItem("sora_card_code", cardCode);
+        state.cardCode = cardCode;
+        setNotice(`已提交 ${data.count} 条，批次：${data.batch_id}`);
+        await loadBatch();
+      } catch (err) {
+        setNotice(err.message, true);
+      }
+    }
+
+    async function requestPhone() {
+      const cardCode = phoneCardCodeEl.value.trim();
+      if (!cardCode) {
+        setPhoneNotice("请填写卡密", true);
+        return;
+      }
+      setPhoneNotice("请求中...");
+      try {
+        const data = await api("/api/user/phone/request", {
+          method: "POST",
+          body: JSON.stringify({ card_code: cardCode }),
+        });
+        state.phoneRequestId = String(data.request_id);
+        localStorage.setItem("sora_phone_request", state.phoneRequestId);
+        localStorage.setItem("sora_card_code", cardCode);
+        state.cardCode = cardCode;
+        cardCodeEl.value = cardCode;
+        phoneValueEl.textContent = data.phone || "-";
+        phoneRemainEl.textContent = data.card_remaining ?? "-";
+        phoneCodeEl.textContent = "-";
+        phoneStatusEl.textContent = "等待验证码";
+        setPhoneNotice("已分配手机号，正在轮询验证码");
+        startPhonePolling();
+      } catch (err) {
+        setPhoneNotice(err.message, true);
+      }
+    }
+
+    async function loadPhoneStatus() {
+      if (!state.phoneRequestId) {
+        return;
+      }
+      try {
+        const cardCode = phoneCardCodeEl.value.trim();
+        if (!cardCode) {
+          setPhoneNotice("请填写卡密", true);
+          return;
+        }
+        const data = await api(`/api/user/phone/status/${state.phoneRequestId}?card_code=${encodeURIComponent(cardCode)}`);
+        phoneValueEl.textContent = data.phone || "-";
+        phoneCodeEl.textContent = data.sms_code || "-";
+        phoneStatusEl.textContent = data.message || data.status || "-";
+        phoneRemainEl.textContent = data.card_remaining ?? "-";
+        if (phonePollEl) {
+          phonePollEl.textContent = data.poll_remaining ?? "-";
+        }
+        if (data.status === "success" || data.status === "failed") {
+          stopPhonePolling();
+        }
+      } catch (err) {
+        setPhoneNotice(err.message, true);
+      }
+    }
+
+    function startPhonePolling() {
+      stopPhonePolling();
+      state.polling = setInterval(loadPhoneStatus, 2000);
+      loadPhoneStatus();
+    }
+
+    function stopPhonePolling() {
+      if (state.polling) {
+        clearInterval(state.polling);
+        state.polling = null;
+      }
+    }
+
+    async function loadBatch() {
+      if (!state.batchId) {
+        return;
+      }
+      try {
+        const cardCode = getCardCodeValue();
+        if (!cardCode) {
+          setNotice("请填写卡密", true);
+          return;
+        }
+        const data = await api(`/api/user/batch/${state.batchId}?card_code=${encodeURIComponent(cardCode)}`);
+        document.getElementById("cardRemain").textContent = `${data.card_remaining} / ${data.card_total}`;
+        document.getElementById("countSuccess").textContent = data.counts.success;
+        document.getElementById("countFailed").textContent = data.counts.failed;
+        document.getElementById("countRunning").textContent = data.counts.running;
+        document.getElementById("countPending").textContent = data.counts.pending;
+        document.getElementById("queueTotal").textContent = data.queue_total ?? 0;
+        document.getElementById("concurrencyValue").textContent = data.concurrency ?? "-";
+
+        const listEl = document.getElementById("resultList");
+        listEl.innerHTML = data.items.map((item, idx) => {
+          const statusClass = item.status || "pending";
+          const resultClass = statusClass === "success"
+            ? "success"
+            : statusClass === "failed" || statusClass === "canceled"
+              ? "failed"
+              : "pending";
+          const resultSymbol = statusClass === "success"
+            ? "✓"
+            : statusClass === "failed" || statusClass === "canceled"
+              ? "×"
+              : "·";
+          const message = item.message || "等待中";
+          const phone = item.phone || "-";
+          const smsCode = item.sms_code || "-";
+          const newRt = item.new_rt ? `${item.new_rt.slice(0, 10)}...` : "-";
+          const queueInfo = statusClass === "pending"
+            ? `${item.queue_position || 0}/${data.queue_total || 0}`
+            : statusClass === "running"
+              ? "执行中"
+              : "-";
+          return `
+            <tr>
+              <td>${idx + 1}</td>
+              <td class="col-token">${item.token_type.toUpperCase()} · ${item.token_preview}</td>
+              <td class="col-status"><span class="status ${statusClass}">${statusClass}</span></td>
+              <td class="col-queue">${queueInfo}</td>
+              <td class="col-flag"><span class="result-flag ${resultClass}">${resultSymbol}</span></td>
+              <td class="col-progress">${message}</td>
+              <td class="col-phone">${phone}</td>
+              <td class="col-code">${smsCode}</td>
+              <td class="col-newrt">${newRt}</td>
+            </tr>
+          `;
+        }).join("");
+      } catch (err) {
+        setNotice(err.message, true);
+      }
+    }
+
+    async function clearBatch() {
+      if (!state.batchId) {
+        tokenInputEl.value = "";
+        setNotice("已清空输入");
+        return;
+      }
+      try {
+        const cardCode = getCardCodeValue();
+        if (!cardCode) {
+          setNotice("请填写卡密", true);
+          return;
+        }
+        await api("/api/user/clear_batch", {
+          method: "POST",
+          body: JSON.stringify({ batch_id: state.batchId, card_code: cardCode }),
+        });
+        state.batchId = "";
+        localStorage.removeItem("sora_batch_id");
+        setNotice("已清空批次");
+        document.getElementById("resultList").innerHTML = "";
+      } catch (err) {
+        setNotice(err.message, true);
+      }
+    }
+
+    async function cancelBatch() {
+      if (!state.batchId) {
+        setNotice("暂无可终止的批次", true);
+        return;
+      }
+      try {
+        const cardCode = getCardCodeValue();
+        if (!cardCode) {
+          setNotice("请填写卡密", true);
+          return;
+        }
+        const data = await api("/api/user/cancel_batch", {
+          method: "POST",
+          body: JSON.stringify({ batch_id: state.batchId, card_code: cardCode }),
+        });
+        setNotice(`已终止 ${data.canceled || 0} 条`);
+        await loadBatch();
+      } catch (err) {
+        setNotice(err.message, true);
+      }
+    }
+
+    function exportNewRt() {
+      if (!state.batchId) {
+        setNotice("暂无批次可导出", true);
+        return;
+      }
+      const cardCode = getCardCodeValue();
+      if (!cardCode) {
+        setNotice("请填写卡密", true);
+        return;
+      }
+      window.open(`/api/user/export/new_rt?batch_id=${state.batchId}&card_code=${encodeURIComponent(cardCode)}`, "_blank");
+    }
+
+    function exportFailed() {
+      if (!state.batchId) {
+        setNotice("暂无批次可导出", true);
+        return;
+      }
+      const cardCode = getCardCodeValue();
+      if (!cardCode) {
+        setNotice("请填写卡密", true);
+        return;
+      }
+      window.open(`/api/user/export/failed?batch_id=${state.batchId}&card_code=${encodeURIComponent(cardCode)}`, "_blank");
+    }
+
+    function exportSuccess() {
+      if (!state.batchId) {
+        setNotice("暂无批次可导出", true);
+        return;
+      }
+      const cardCode = getCardCodeValue();
+      if (!cardCode) {
+        setNotice("请填写卡密", true);
+        return;
+      }
+      window.open(`/api/user/export/success?batch_id=${state.batchId}&card_code=${encodeURIComponent(cardCode)}`, "_blank");
+    }
+
+    function exportUnbound() {
+      if (!state.batchId) {
+        setNotice("暂无批次可导出", true);
+        return;
+      }
+      const cardCode = getCardCodeValue();
+      if (!cardCode) {
+        setNotice("请填写卡密", true);
+        return;
+      }
+      window.open(`/api/user/export/unbound?batch_id=${state.batchId}&card_code=${encodeURIComponent(cardCode)}`, "_blank");
+    }
+
+    function exportAll() {
+      if (!state.batchId) {
+        setNotice("暂无批次可导出", true);
+        return;
+      }
+      const cardCode = getCardCodeValue();
+      if (!cardCode) {
+        setNotice("请填写卡密", true);
+        return;
+      }
+      window.open(`/api/user/export/all_tokens?batch_id=${state.batchId}&card_code=${encodeURIComponent(cardCode)}`, "_blank");
+    }
+
+    async function cancelPhone() {
+      if (!state.phoneRequestId) {
+        setPhoneNotice("暂无可终止的请求", true);
+        return;
+      }
+      try {
+        const cardCode = phoneCardCodeEl.value.trim();
+        if (!cardCode) {
+          setPhoneNotice("请填写卡密", true);
+          return;
+        }
+        await api("/api/user/phone/cancel", {
+          method: "POST",
+          body: JSON.stringify({ request_id: Number(state.phoneRequestId), card_code: cardCode }),
+        });
+        phoneStatusEl.textContent = "已取消";
+        setPhoneNotice("已终止获取");
+        stopPhonePolling();
+      } catch (err) {
+        setPhoneNotice(err.message, true);
+      }
+    }
+
+    document.getElementById("submitBtn").addEventListener("click", submitTokens);
+    document.getElementById("clearBtn").addEventListener("click", clearBatch);
+    document.getElementById("cancelBatch").addEventListener("click", cancelBatch);
+    document.getElementById("requestPhone").addEventListener("click", requestPhone);
+    document.getElementById("clearPhone").addEventListener("click", () => {
+      state.phoneRequestId = "";
+      localStorage.removeItem("sora_phone_request");
+      phoneValueEl.textContent = "-";
+      phoneCodeEl.textContent = "-";
+      phoneStatusEl.textContent = "-";
+      phoneRemainEl.textContent = "-";
+      setPhoneNotice("已清空");
+      stopPhonePolling();
+    });
+    document.getElementById("cancelPhone").addEventListener("click", cancelPhone);
+    document.getElementById("exportNewRt").addEventListener("click", exportNewRt);
+    document.getElementById("exportFailed").addEventListener("click", exportFailed);
+    document.getElementById("exportSuccess").addEventListener("click", exportSuccess);
+    document.getElementById("exportUnbound").addEventListener("click", exportUnbound);
+    document.getElementById("exportAll").addEventListener("click", exportAll);
+
+    loadBatch();
+    setInterval(loadBatch, 2000);
+    if (state.phoneRequestId) {
+      startPhonePolling();
+    }
+    if (state.cardCode) {
+      refreshCardBalance(state.cardCode);
+    }
+  </script>
+</body>
+</html>
