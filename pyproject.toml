@@ -32,8 +32,8 @@ dependencies = [
 sora-bind = "main:app"
 
 [project.urls]
-Homepage = "https://github.com/YOUR_USERNAME/phone_verify"
-Repository = "https://github.com/YOUR_USERNAME/phone_verify"
+Homepage = "https://github.com/genz27/sora-phone-bind"
+Repository = "https://github.com/genz27/sora-phone-bind"
 
 [tool.setuptools]
 py-modules = ["main"]
