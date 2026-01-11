@@ -350,10 +350,12 @@
         <label>卡密</label>
         <input id="cardCode" type="text" placeholder="输入卡密">
 
+        <label style="margin-top:14px;">Client ID（可选，留空使用默认）</label>
+        <input id="clientId" type="text" placeholder="app_LlGpXReQgckcGGUo2JrYvtJK">
+
         <label style="margin-top:14px;">Token 类型</label>
         <div class="segmented" id="tokenType">
           <button data-type="rt">RT</button>
-          <button data-type="st">ST</button>
         </div>
 
         <label style="margin-top:14px;">Token 列表（每行一个）</label>
@@ -475,7 +477,7 @@
       phoneRequestId: localStorage.getItem("sora_phone_request") || "",
       polling: null,
     };
-    const allowedTypes = ["rt", "st"];
+    const allowedTypes = ["rt"];
 
     const noticeEl = document.getElementById("notice");
     const tokenTypeEl = document.getElementById("tokenType");
@@ -618,6 +620,7 @@
     async function submitTokens() {
       const cardCode = cardCodeEl.value.trim();
       const tokens = tokenInputEl.value.trim();
+      const clientId = document.getElementById("clientId").value.trim();
       if (!cardCode || !tokens) {
         setNotice("请填写卡密和 token 列表", true);
         return;
@@ -630,6 +633,7 @@
             card_code: cardCode,
             token_type: state.tokenType,
             tokens,
+            client_id: clientId || null,
           }),
         });
         state.batchId = data.batch_id;

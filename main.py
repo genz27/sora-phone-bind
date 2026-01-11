@@ -257,6 +257,8 @@ def ensure_jobs_schema() -> None:
         cols = {row["name"] for row in cur.fetchall()}
         if "sms_code" not in cols:
             conn.execute("ALTER TABLE jobs ADD COLUMN sms_code TEXT")
+        if "client_id" not in cols:
+            conn.execute("ALTER TABLE jobs ADD COLUMN client_id TEXT")
         conn.commit()
         conn.close()
 
@@ -489,7 +491,7 @@ def generate_card_code(length: int = 16) -> str:
 
 def validate_tokens(token_type: str, tokens: List[str]) -> Tuple[bool, List[str]]:
     invalid = []
-    if token_type not in {"at", "rt", "st"}:
+    if token_type not in {"at", "rt"}:
         return False, tokens
     for token in tokens:
         if not TOKEN_PATTERN.fullmatch(token):
@@ -523,16 +525,16 @@ def update_card(code: str, total: int, remaining: int, active: int, note: str) -
     )
 
 
-def insert_jobs(batch_id: str, card_code: str, token_type: str, tokens: List[str]) -> None:
+def insert_jobs(batch_id: str, card_code: str, token_type: str, tokens: List[str], client_id: Optional[str] = None) -> None:
     now = now_str()
     payload = [
-        (batch_id, card_code, token_type, token, "pending", "待处理", "", "", now, now)
+        (batch_id, card_code, token_type, token, "pending", "待处理", "", "", client_id or "", now, now)
         for token in tokens
     ]
     db_executemany(
         """
-        INSERT INTO jobs (batch_id, card_code, token_type, token, status, message, phone, new_rt, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO jobs (batch_id, card_code, token_type, token, status, message, phone, new_rt, client_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         payload,
     )
@@ -856,7 +858,140 @@ async def unlock_phone(phone: str) -> None:
 
 
 # ============== 核心功能 ==============
-async def rt_to_at(rt: str, max_retries: int = 3) -> Dict[str, Any]:
+DEFAULT_CLIENT_ID = "app_LlGpXReQgckcGGUo2JrYvtJK"
+
+
+def _generate_random_username() -> str:
+    """生成随机用户名"""
+    import string
+    chars = string.ascii_lowercase + string.digits
+    return "user_" + "".join(random.choice(chars) for _ in range(8))
+
+
+async def get_user_info(token: str) -> Optional[Dict[str, Any]]:
+    """获取用户信息"""
+    proxy = get_proxy()
+    try:
+        async with AsyncSession(impersonate=random.choice(MOBILE_FINGERPRINTS)) as s:
+            kwargs = {
+                "headers": build_headers(token),
+                "timeout": 30,
+            }
+            if proxy:
+                kwargs["proxy"] = proxy
+            r = await s.get("https://sora.chatgpt.com/backend/me", **kwargs)
+            if r.status_code == 200:
+                return r.json()
+            response_text = r.text[:200] if r.text else ""
+            log_event(f"[WARN] 获取用户信息失败 HTTP {r.status_code} - {response_text}")
+    except Exception as e:
+        log_event(f"[WARN] 获取用户信息异常: {e}")
+    return None
+
+
+async def check_username_available(token: str, username: str) -> bool:
+    """检查用户名是否可用"""
+    proxy = get_proxy()
+    try:
+        async with AsyncSession(impersonate=random.choice(MOBILE_FINGERPRINTS)) as s:
+            kwargs = {
+                "headers": build_headers(token),
+                "json": {"username": username},
+                "timeout": 30,
+            }
+            if proxy:
+                kwargs["proxy"] = proxy
+            r = await s.post("https://sora.chatgpt.com/backend/project_y/profile/username/check", **kwargs)
+            if r.status_code == 200:
+                data = r.json()
+                return data.get("available", False)
+    except Exception as e:
+        log_event(f"[WARN] 检查用户名异常: {e}")
+    return False
+
+
+async def set_username(token: str, username: str) -> bool:
+    """设置用户名"""
+    proxy = get_proxy()
+    try:
+        async with AsyncSession(impersonate=random.choice(MOBILE_FINGERPRINTS)) as s:
+            kwargs = {
+                "headers": build_headers(token),
+                "json": {"username": username},
+                "timeout": 30,
+            }
+            if proxy:
+                kwargs["proxy"] = proxy
+            r = await s.post("https://sora.chatgpt.com/backend/project_y/profile/username/set", **kwargs)
+            if r.status_code == 200:
+                log_event(f"[USERNAME] 设置成功: {username}")
+                return True
+            log_event(f"[WARN] 设置用户名失败 HTTP {r.status_code} - {r.text[:200] if r.text else ''}")
+    except Exception as e:
+        log_event(f"[WARN] 设置用户名异常: {e}")
+    return False
+
+
+async def activate_sora2(token: str) -> bool:
+    """激活Sora2账户"""
+    proxy = get_proxy()
+    try:
+        async with AsyncSession(impersonate=random.choice(MOBILE_FINGERPRINTS)) as s:
+            kwargs = {
+                "headers": build_headers(token),
+                "timeout": 30,
+            }
+            if proxy:
+                kwargs["proxy"] = proxy
+            r = await s.get("https://sora.chatgpt.com/backend/m/bootstrap", **kwargs)
+            if r.status_code == 200:
+                log_event(f"[SORA2] 激活成功")
+                return True
+            response_text = r.text[:200] if r.text else ""
+            log_event(f"[WARN] Sora2激活失败 HTTP {r.status_code} - {response_text}")
+    except Exception as e:
+        log_event(f"[WARN] Sora2激活异常: {e}")
+    return False
+
+
+async def ensure_user_activated(token: str, job_id: int) -> bool:
+    """确保用户已激活Sora账户（有用户名）"""
+    # 先激活Sora2
+    update_job(job_id, message="激活Sora2")
+    await activate_sora2(token)
+
+    update_job(job_id, message="检查账户状态")
+    user_info = await get_user_info(token)
+    if not user_info:
+        log_event(f"[{job_id}] 无法获取用户信息")
+        return False
+
+    username = user_info.get("username")
+    if username:
+        log_event(f"[{job_id}] 账户已激活 username={username}")
+        return True
+
+    log_event(f"[{job_id}] 账户未激活，开始设置用户名")
+    update_job(job_id, message="设置用户名")
+
+    max_attempts = 5
+    for attempt in range(max_attempts):
+        generated_username = _generate_random_username()
+        log_event(f"[{job_id}] 尝试用户名 ({attempt + 1}/{max_attempts}): {generated_username}")
+
+        if await check_username_available(token, generated_username):
+            if await set_username(token, generated_username):
+                log_event(f"[{job_id}] 账户激活成功 username={generated_username}")
+                return True
+        else:
+            log_event(f"[{job_id}] 用户名 {generated_username} 已被占用")
+
+    log_event(f"[{job_id}] 账户激活失败，达到最大尝试次数")
+    return False
+
+
+async def rt_to_at(rt: str, max_retries: int = 3, client_id: Optional[str] = None) -> Dict[str, Any]:
+    effective_client_id = client_id or DEFAULT_CLIENT_ID
     for attempt in range(max_retries):
         proxy = get_proxy()
         try:
@@ -864,7 +999,7 @@ async def rt_to_at(rt: str, max_retries: int = 3) -> Dict[str, Any]:
                 kwargs = {
                     "headers": {"Accept": "application/json", "Content-Type": "application/json"},
                     "json": {
-                        "client_id": "app_LlGpXReQgckcGGUo2JrYvtJK",
+                        "client_id": effective_client_id,
                         "grant_type": "refresh_token",
                         "redirect_uri": "com.openai.chat://auth0.openai.com/ios/com.openai.chat/callback",
                         "refresh_token": rt.strip(),
@@ -875,7 +1010,8 @@ async def rt_to_at(rt: str, max_retries: int = 3) -> Dict[str, Any]:
                     kwargs["proxy"] = proxy
                 r = await s.post("https://auth.openai.com/oauth/token", **kwargs)
                 if r.status_code != 200:
-                    raise ValueError(f"HTTP {r.status_code}")
+                    response_text = r.text[:200] if r.text else ""
+                    raise ValueError(f"HTTP {r.status_code} - {response_text}")
                 d = r.json()
                 if not d.get("access_token"):
                     raise ValueError("RT无效")
@@ -956,7 +1092,13 @@ async def submit_code(token: str, phone: str, code: str) -> bool:
         if proxy:
             kwargs["proxy"] = proxy
         r = await s.post("https://sora.chatgpt.com/backend/project_y/phone_number/enroll/finish", **kwargs)
-        return r.status_code == 200
+        success = r.status_code == 200
+        response_text = r.text[:200] if r.text else ""
+        if success:
+            log_event(f"[VERIFY] 验证成功 phone={phone} code={code}")
+        else:
+            log_event(f"[VERIFY] 验证失败 phone={phone} code={code} HTTP {r.status_code} - {response_text}")
+        return success
 
 
 async def schedule_job(job_id: int) -> None:
@@ -1010,6 +1152,8 @@ async def process_job(job_id: int) -> None:
 
             token_type = job["token_type"]
             token = job["token"]
+            original_rt = token if token_type == "rt" else ""
+            client_id = job.get("client_id") or None
             new_rt = ""
 
             if is_job_canceled(job_id):
@@ -1018,12 +1162,22 @@ async def process_job(job_id: int) -> None:
 
             if token_type == "rt":
                 update_job(job_id, message="RT转换中")
-                at_info = await rt_to_at(token)
+                at_info = await rt_to_at(token, client_id=client_id)
                 token = at_info["access_token"]
                 new_rt = at_info.get("refresh_token") or ""
+                original_rt = new_rt or original_rt  # 使用新RT
                 if is_job_canceled(job_id):
                     update_job(job_id, status="canceled", message="已取消")
                     return
+
+            # 检查并激活账户
+            if not await ensure_user_activated(token, job_id):
+                update_job(job_id, status="failed", message="账户激活失败")
+                return
+
+            if is_job_canceled(job_id):
+                update_job(job_id, status="canceled", message="已取消")
+                return
 
             if not await wait_if_paused():
                 update_job(job_id, status="failed", message="任务已停止")
@@ -1104,6 +1258,21 @@ async def process_job(job_id: int) -> None:
             if is_job_canceled(job_id):
                 update_job(job_id, status="canceled", message="已取消", phone=phone)
                 return
+
+            # RT类型需要重新获取AT（等待验证码期间AT可能已过期）
+            if token_type == "rt" and original_rt:
+                update_job(job_id, message="刷新Token", phone=phone)
+                try:
+                    at_info = await rt_to_at(original_rt, client_id=client_id)
+                    token = at_info["access_token"]
+                    if at_info.get("refresh_token"):
+                        new_rt = at_info["refresh_token"]
+                        original_rt = new_rt
+                except Exception as e:
+                    log_event(f"[{job_id}] 刷新Token失败: {e}")
+                    update_job(job_id, status="failed", message=f"刷新Token失败: {e}", phone=phone)
+                    return
+
             update_job(job_id, message="提交验证", phone=phone)
             if not await submit_code(token, phone, code):
                 update_job(job_id, status="failed", message="验证失败", phone=phone)
@@ -1188,6 +1357,7 @@ class SubmitInput(BaseModel):
     card_code: str
     token_type: str
     tokens: str
+    client_id: Optional[str] = None
 
 
 class BatchInput(BaseModel):
@@ -1270,7 +1440,8 @@ async def user_submit(inp: SubmitInput):
         )
 
     batch_id = uuid.uuid4().hex
-    insert_jobs(batch_id, card_code, token_type, tokens)
+    client_id = (inp.client_id or "").strip() or None
+    insert_jobs(batch_id, card_code, token_type, tokens, client_id=client_id)
     job_ids = [j["id"] for j in fetch_jobs_by_batch(batch_id)]
 
     for job_id in job_ids:
